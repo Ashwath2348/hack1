@@ -13,7 +13,7 @@ function ResultCard({ result }) {
   const isMine = result.prediction === "Mine";
 
   return (
-    <Card title="Detection Result" subtitle="AI classification output">
+    <Card title="Detection Result" subtitle="Prediction generated using backend model">
       <motion.div
         initial={{ opacity: 0.4, scale: 0.98 }}
         animate={{ opacity: 1, scale: 1 }}

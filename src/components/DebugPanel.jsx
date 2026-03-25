@@ -2,7 +2,7 @@ import Card from "./Card";
 
 function DebugPanel({ values, result, signalType }) {
   return (
-    <Card title="Debug Panel" subtitle="Simulation diagnostics (frontend-only)">
+    <Card title="Debug Panel" subtitle="Backend integration diagnostics">
       <div className="space-y-3 text-xs text-slate-200">
         <div className="rounded border border-neon-green/20 bg-command-800/55 p-2">
           <p className="text-[11px] uppercase tracking-wider text-neon-green">Signal Profile</p>
@@ -23,7 +23,7 @@ function DebugPanel({ values, result, signalType }) {
         </div>
 
         <div className="rounded border border-neon-green/20 bg-command-800/55 p-2">
-          <p className="text-[11px] uppercase tracking-wider text-neon-green">Simulated Probabilities</p>
+          <p className="text-[11px] uppercase tracking-wider text-neon-green">Backend Probabilities</p>
           <p className="mt-1 text-slate-300">
             Mine: {result ? `${result.mineProbability}%` : "--"} | Rock: {result ? `${result.rockProbability}%` : "--"}
           </p>

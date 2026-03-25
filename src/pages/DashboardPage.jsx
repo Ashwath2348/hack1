@@ -11,10 +11,10 @@ import ThemeToggle from "../components/ThemeToggle";
 import {
   generateMineSignal,
   generateRockSignal,
-  runDetectionSimulation,
   sanitizeNumericInput,
   validateSonarValues,
 } from "../utils/sonar";
+import { fetchPredictionHistory, predictSonarFeatures } from "../utils/api";
 
 function DashboardPage({ onBack, theme, onToggleTheme }) {
   const [mode, setMode] = useState("manual");
@@ -44,7 +44,7 @@ function DashboardPage({ onBack, theme, onToggleTheme }) {
     setError("");
   };
 
-  const handleRunDetection = () => {
+  const handleRunDetection = async () => {
     const validationMessage = validateSonarValues(values);
     if (validationMessage) {
       setError(validationMessage);
@@ -54,24 +54,35 @@ function DashboardPage({ onBack, theme, onToggleTheme }) {
     setError("");
     setLoading(true);
 
-    const processingDelay = 2000 + Math.floor(Math.random() * 1000);
+    try {
+      const features = values.map((entry) => Number(entry));
+      const output = await predictSonarFeatures(features);
+      const normalizedResult = {
+        prediction: output.prediction,
+        confidence: output.confidence,
+        mineProbability: Math.round(output.probabilities.mine * 100),
+        rockProbability: Math.round(output.probabilities.rock * 100),
+        debug: {
+          ...output.debug,
+          fallbackPrediction: output?.debug?.fallbackRule,
+        },
+      };
 
-    // Frontend-only AI simulation: no backend calls.
-    window.setTimeout(() => {
-      const output = runDetectionSimulation(values.map((entry) => Number(entry)));
-      setResult(output);
+      setResult(normalizedResult);
+      console.log("[FRONTEND] Prediction response:", output);
+
       setHistory((previous) => [
         {
-          time: new Date().toLocaleTimeString(),
-          prediction: output.prediction,
-          confidence: output.confidence,
-          mineProbability: output.mineProbability,
-          rockProbability: output.rockProbability,
+          time: output.timestamp ? new Date(output.timestamp).toLocaleTimeString() : new Date().toLocaleTimeString(),
+          prediction: normalizedResult.prediction,
+          confidence: normalizedResult.confidence,
+          mineProbability: normalizedResult.mineProbability,
+          rockProbability: normalizedResult.rockProbability,
         },
         ...previous,
       ]);
 
-      if (output.prediction === "Mine") {
+      if (normalizedResult.prediction === "Mine") {
         const audioContext = new (window.AudioContext || window.webkitAudioContext)();
         const oscillator = audioContext.createOscillator();
         const gain = audioContext.createGain();
@@ -84,8 +95,23 @@ function DashboardPage({ onBack, theme, onToggleTheme }) {
         oscillator.stop(audioContext.currentTime + 0.2);
       }
 
+      const backendHistory = await fetchPredictionHistory();
+      if (backendHistory?.items?.length) {
+        setHistory(
+          backendHistory.items.slice(0, 10).map((item) => ({
+            time: item.timestamp ? new Date(item.timestamp).toLocaleTimeString() : "--",
+            prediction: item.prediction,
+            confidence: item.confidence,
+            mineProbability: Math.round(item.probabilities.mine * 100),
+            rockProbability: Math.round(item.probabilities.rock * 100),
+          }))
+        );
+      }
+    } catch (requestError) {
+      setError(requestError.message || "Backend prediction failed.");
+    } finally {
       setLoading(false);
-    }, processingDelay);
+    }
   };
 
   return (
@@ -130,7 +156,7 @@ function DashboardPage({ onBack, theme, onToggleTheme }) {
             </div>
 
             <p className="mb-3 text-xs text-neon-green/90">
-              Using simulated realistic sonar data for prediction.
+              Using realistic sonar patterns as input. Prediction generated using backend model.
             </p>
 
             <InputGrid values={values} onChange={handleInputChange} mode={mode} />
