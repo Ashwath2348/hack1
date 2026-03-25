@@ -1,0 +1,48 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: rock_vs_mine_db
+    environment:
+      POSTGRES_USER: rock_user
+      POSTGRES_PASSWORD: secure_password
+      POSTGRES_DB: rock_vs_mine
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U rock_user"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - rock_vs_mine_network
+
+  # FastAPI Backend
+  backend:
+    build: .
+    container_name: rock_vs_mine_backend
+    environment:
+      DATABASE_URL: postgresql://rock_user:secure_password@postgres:5432/rock_vs_mine
+      SECRET_KEY: your-secret-key-change-in-production
+      DEBUG: "False"
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./datasets:/app/datasets
+      - ./models:/app/models
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - rock_vs_mine_network
+
+volumes:
+  postgres_data:
+
+networks:
+  rock_vs_mine_network:
+    driver: bridge
